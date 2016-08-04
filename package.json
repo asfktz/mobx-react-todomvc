@@ -48,6 +48,7 @@
     "classnames": "^2.2.3",
     "director": "^1.2.8",
     "express": "^4.13.4",
+    "lodash": "^4.14.1",
     "mobx": "^2.0.0",
     "mobx-react": "^3.0.0",
     "mobx-react-devtools": "^4.0.5",

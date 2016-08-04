@@ -1,24 +1,40 @@
-import {observable} from 'mobx';
+import {observable, computed, reaction, autorun} from 'mobx';
+import { now } from '../utils'
 
 export default class TodoModel {
 	store;
 	id;
 	@observable title;
 	@observable completed;
+	@observable lastModified;
 
 	constructor(store, id, title, completed) {
 		this.store = store;
 		this.id = id;
 		this.title = title;
 		this.completed = completed;
+		
+		this.cancelAutoSave = reaction(
+			() => this.toJS(),
+			() => this.lastModified = now(),
+			true
+		)
+	}
+
+	destroy() {
+		this.cancelAutoSave()
+		this.store.removeTodo(this)
+	}
+
+	@computed get asJson () {
+		return {
+			title : this.title,
+			completed : this.completed
+		}
 	}
 
 	toggle() {
 		this.completed = !this.completed;
-	}
-
-	destroy() {
-		this.store.todos.remove(this);
 	}
 
 	setTitle(title) {

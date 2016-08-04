@@ -21,7 +21,7 @@ app.use(webpackDevMiddleware(compiler, { noInfo: true, publicPath: config.output
 app.use(webpackHotMiddleware(compiler));
 
 const renderFullPage = html => {
-	const initialState = { todos };
+	const initialState = { todos : toArray(todos) };
 	return `
 	<!doctype html>
 	<html lang="utf-8">
@@ -46,32 +46,65 @@ const renderFullPage = html => {
 	`
 };
 
-let todos = []; // Todos are stored here
+let todos = {}; // Todos are stored here
 
 app.use(bodyParser.json());
 
 app.get('/', function(req, res) {
-	const todoStore = TodoStore.fromJS(todos);
-	const viewStore = new ViewStore();
+	// const todoStore = TodoStore.fromJS(todos);
+	// const viewStore = new ViewStore();
 
-	const initView = renderToString((
-		<TodoApp todoStore={todoStore} viewStore={viewStore} />
-	));
+	// const initView = renderToString((
+	// 	<TodoApp todoStore={todoStore} viewStore={viewStore} />
+	// ));
 
-	const page = renderFullPage(initView);
+	// const page = renderFullPage(initView);
+	const page = renderFullPage('');
 
 	res.status(200).send(page);
 });
 
-app.post('/api/todos', function(req, res) {
-	todos = req.body.todos;
-	if (Array.isArray(todos)) {
-		console.log(`Updated todos (${todos.length})`);
-		res.status(201).send(JSON.stringify({ success: true }));
-	} else {
-		res.status(200).send(JSON.stringify({ success: false, error: "expected `todos` to be array" }));
-	}
+// app.post('/api/todos/:id', function(req, res) {
+// 	todos[req.params.id] = req.body
+// 	res.status(201).send(JSON.stringify({ success: true }));
+// 	// if (Array.isArray(todos)) {
+// 	// 	console.log(`Updated todos (${todos.length})`);
+// 	// 	res.status(201).send(JSON.stringify({ success: true }));
+// 	// } else {
+// 	// 	res.status(200).send(JSON.stringify({ success: false, error: "expected `todos` to be array" }));
+// 	// }
+// });
+
+const toArray = (obj) => Object.keys(obj).map(key => obj[key])
+
+app.post('/api/todos/batch', function(req, res) {
+	req.body.created
+	req.body.modified && req.body.modified.forEach((todo) => {
+		todos[todo.id] = todo
+	})
+	req.body.deletedIds && req.body.deletedIds.forEach((id) => {
+		console.log(id)
+		delete todos[id]
+	})
+
+	const todosArr = toArray(todos);
+	console.log(`Updated todos (${todosArr.length})`);
+
+	res.status(201).send(JSON.stringify({
+		success: true,
+		todos : todosArr
+	}));
 });
+
+// app.post('/api/todos', function(req, res) {
+// 	todos = req.body.todos;
+// 	if (Array.isArray(todos)) {
+// 		console.log(`Updated todos (${todos.length})`);
+// 		res.status(201).send(JSON.stringify({ success: true }));
+// 	} else {
+// 		res.status(200).send(JSON.stringify({ success: false, error: "expected `todos` to be array" }));
+// 	}
+// });
 
 // example of handling 404 pages
 app.get('*', function(req, res) {

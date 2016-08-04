@@ -26,6 +26,9 @@ export default class TodoOverview extends React.Component {
 					/>)
 				)}
 			</ul>
+			<div>
+				lastUpdate:{todoStore.lastModified} | lastSync:{todoStore.lastSync}
+			</div>
 		</section>
 	}
 

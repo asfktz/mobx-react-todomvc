@@ -1,10 +1,42 @@
 import {observable, computed, autorun} from 'mobx';
 import TodoModel from '../models/TodoModel'
-import * as Utils from '../utils';
+import { uuid, now } from '../utils';
+import debounce from 'lodash/debounce'
 
 
 export default class TodoStore {
 	@observable todos = [];
+
+	constructor () {
+		this.sync = debounce(() => {
+			const modifiedTodos = this.todos
+				.filter(todo => todo.lastModified > this.lastSync)
+				.map(todo => todo.toJS())
+			
+			fetch('/api/todos/batch', {
+				headers: new Headers({ 'content-type': 'application/json' }),
+				method: 'post',
+				body: JSON.stringify({
+					created : [],
+					modified : modifiedTodos,
+					deletedIds : this.pendingDeletedIds
+				})
+			})
+
+			console.log(modifiedTodos)
+			console.log(this.pendingDeletedIds)
+			this.pendingDeletedIds = []
+			this.lastSync = now()
+		}, 1000)
+	}
+
+	@observable pendingDeletedIds = []
+	
+	@computed get lastModified () {
+		if (!this.todos) return null
+		const arr = this.todos.map(todo => todo.lastModified)
+		return Math.max.apply(null, arr)
+	}
 
 	@computed get activeTodoCount() {
 		return this.todos.reduce(
@@ -17,6 +49,10 @@ export default class TodoStore {
 		return this.todos.length - this.activeTodoCount;
 	}
 
+
+	@observable lastSync = null
+	
+
 	subscribeServerToStore(model) {
 		autorun(() => {
 			const todos = this.toJS();
@@ -24,16 +60,26 @@ export default class TodoStore {
 				this.subscribedServerToModel = true;
 				return;
 			}
-			fetch('/api/todos', {
-				method: 'post',
-				body: JSON.stringify({ todos }),
-				headers: new Headers({ 'Content-Type': 'application/json' })
-			})
+
+			if (this.lastSync < this.lastModified || this.pendingDeletedIds.length) {
+				this.sync()
+			}
+
+			// fetch('/api/todos', {
+			// 	method: 'post',
+			// 	body: json.stringify({ todos }),
+			// 	headers: new headers({ 'content-type': 'application/json' })
+			// })
 		});
 	}
 
 	addTodo (title) {
-		this.todos.push(new TodoModel(this, Utils.uuid(), title, false));
+		this.todos.push(new TodoModel(this, uuid(), title, false));
+	}
+
+	removeTodo (todo) {
+		this.pendingDeletedIds.push(todo.id)
+		this.todos.remove(todo);
 	}
 
 	toggleAll (checked) {
@@ -53,8 +99,10 @@ export default class TodoStore {
 	}
 
 	static fromJS(array) {
+		console.log(1111)
 		const todoStore = new TodoStore();
 		todoStore.todos = array.map(item => TodoModel.fromJS(todoStore, item));
+		todoStore.lastSync = now()
 		return todoStore;
 	}
 }
