@@ -1,6 +1,6 @@
 import {observable, computed, autorun} from 'mobx';
 import TodoModel from '../models/TodoModel'
-import { uuid, now } from '../utils';
+import { now } from '../utils';
 import debounce from 'lodash/debounce'
 
 export default class TodoStore {
@@ -10,36 +10,74 @@ export default class TodoStore {
 		this.lastSync = this.lastModified
 		
 		this.sync = debounce(() => {
-			const modifiedTodos = this.todos
-				.filter(todo => todo.lastModified > this.lastSync)
-				.map(todo => todo.toJS())
 			
-			fetch('/api/todos/batch', {
+			const createdTodos = this.todos
+				.filter(todo => todo.isTemp)
+				.map(todo => todo.toJS())
+
+			const modifiedTodos = this.todos
+				.filter(todo => !todo.isTemp && todo.lastModified > this.lastSync)
+				.map(todo => todo.toJS())
+
+
+			const promises = [].concat(
+				
+			)
+	
+
+		const createPromises = createdTodos.map((todo) => {
+			return fetch('/api/todos', {
 				headers: new Headers({ 'content-type': 'application/json' }),
-				method: 'post',
-				body: JSON.stringify({
-					created : [],
-					modified : modifiedTodos,
-					deletedIds : this.pendingDeletedIds
-				})
-			}).then(() => {
-				this.pendingDeletedIds = []
-				this.lastSync = this.lastModified
+				method: 'POST',
+				body: JSON.stringify(todo.toJS())
 			})
-		}, 500)
+		})
+
+		const updatePromise = fetch('/api/todos', {
+			headers: new Headers({ 'content-type': 'application/json' }),
+			method: 'PUT',
+			body: JSON.stringify(modifiedTodos)
+		}),
+
+		const deletePromise = fetch('/api/todos', {
+			headers: new Headers({ 'content-type': 'application/json' }),
+			method: 'DELETE',
+			body: JSON.stringify(this.pendingDeletedIds.toJS())
+		})
+
+
+		console.log([
+			...createPromises, 
+			updatePromise,
+			deletePromise
+		])
+
+		// Promise.all(promises)
+		// 	.then(() => {
+		// 		console.log('done')
+		// 		this.pendingDeletedIds = []
+		// 	})
+
+		// }, 500)
 	}
 
 	@observable pendingDeletedIds = []
-	
+
 	@computed get lastModified () {
-		if (!this.todos) return null
-		const arr = this.todos.map(todo => todo.lastModified)
+		if (!this.todos) return 0
+
+		const arr = this.todos
+			// .filter((todo) => !todo.isTemp)
+			.map((todo) => todo.lastModified)
+
+		if (!arr.length) return 0
+
 		return Math.max.apply(null, arr)
 	}
 
 	@observable lastSync = null
 
-	@computed get isSynced () {
+	@computed get isOutSync () {
 		return this.lastSync === this.lastModified && this.pendingDeletedIds.length === 0
 	}
 
@@ -76,7 +114,12 @@ export default class TodoStore {
 	}
 
 	addTodo (title) {
-		this.todos.push(new TodoModel(this, uuid(), title, false));
+		const todo = new TodoModel(this, {
+			title,
+			completed: false
+		})
+
+		this.todos.push(todo)
 	}
 
 	removeTodo (todo) {

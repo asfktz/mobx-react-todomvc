@@ -20,7 +20,7 @@ export default class TodoOverview extends React.Component {
 			<ul className="todo-list">
 				{this.getVisibleTodos().map(todo =>
 					(<TodoItem
-						key={todo.id}
+						key={todo.key}
 						todo={todo}
 						viewStore={viewStore}
 					/>)
