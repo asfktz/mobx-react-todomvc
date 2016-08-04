@@ -6,11 +6,12 @@ import TodoEntry from './todoEntry';
 import TodoOverview from './todoOverview';
 import TodoFooter from './todoFooter';
 import { ALL_TODOS, ACTIVE_TODOS, COMPLETED_TODOS } from '../constants';
-
 import DevTool from 'mobx-react-devtools';
+
 
 @observer
 export default class TodoApp extends React.Component {
+	
 	render() {
 		const {todoStore, viewStore} = this.props;
 		return (

@@ -26,13 +26,6 @@ export default class TodoModel {
 		this.store.removeTodo(this)
 	}
 
-	@computed get asJson () {
-		return {
-			title : this.title,
-			completed : this.completed
-		}
-	}
-
 	toggle() {
 		this.completed = !this.completed;
 	}

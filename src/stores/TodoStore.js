@@ -3,11 +3,12 @@ import TodoModel from '../models/TodoModel'
 import { uuid, now } from '../utils';
 import debounce from 'lodash/debounce'
 
-
 export default class TodoStore {
 	@observable todos = [];
 
 	constructor () {
+		this.lastSync = this.lastModified
+		
 		this.sync = debounce(() => {
 			const modifiedTodos = this.todos
 				.filter(todo => todo.lastModified > this.lastSync)
@@ -21,13 +22,11 @@ export default class TodoStore {
 					modified : modifiedTodos,
 					deletedIds : this.pendingDeletedIds
 				})
+			}).then(() => {
+				this.pendingDeletedIds = []
+				this.lastSync = this.lastModified
 			})
-
-			console.log(modifiedTodos)
-			console.log(this.pendingDeletedIds)
-			this.pendingDeletedIds = []
-			this.lastSync = now()
-		}, 1000)
+		}, 500)
 	}
 
 	@observable pendingDeletedIds = []
@@ -36,6 +35,12 @@ export default class TodoStore {
 		if (!this.todos) return null
 		const arr = this.todos.map(todo => todo.lastModified)
 		return Math.max.apply(null, arr)
+	}
+
+	@observable lastSync = null
+
+	@computed get isSynced () {
+		return this.lastSync === this.lastModified && this.pendingDeletedIds.length === 0
 	}
 
 	@computed get activeTodoCount() {
@@ -49,9 +54,6 @@ export default class TodoStore {
 		return this.todos.length - this.activeTodoCount;
 	}
 
-
-	@observable lastSync = null
-	
 
 	subscribeServerToStore(model) {
 		autorun(() => {
